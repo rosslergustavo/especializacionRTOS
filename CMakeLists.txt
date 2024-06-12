@@ -16,6 +16,7 @@ pico_sdk_init()
 
 add_executable(hello_world
     src/main.c
+    src/dht.c
 )
 
 target_compile_definitions(hello_world  PRIVATE PICO_MALLOC_PANIC=0)

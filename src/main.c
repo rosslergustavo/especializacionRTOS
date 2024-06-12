@@ -3,8 +3,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "dht.h"
 
-#if 0
+#if 1
 // Simple led task
 void vTaskCode( void * pvParameters )
 {
@@ -14,6 +15,8 @@ void vTaskCode( void * pvParameters )
     */
     for( ;; ) {
         gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        int val = getvalue(); 
+        printf("Hola gus %d \n", val);
         vTaskDelay(pdMS_TO_TICKS(1000));
         gpio_put(PICO_DEFAULT_LED_PIN, 0);
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -282,7 +285,7 @@ int main() {
 }
 #endif
 
-#if 1
+#if 0
 // Two publishers tasks messaging with a Queue to a Consumer task
 QueueHandle_t xQueue;
 void vTaskPublisher( void * pvParameters ) {
