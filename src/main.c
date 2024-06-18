@@ -4,8 +4,16 @@
 #include "task.h"
 #include "semphr.h"
 #include "dht.h"
+#include "ds18b20.h"
+#include "actuador.h"
 
-#if 1
+typedef struct {
+    float humidity;
+    float temp_celsius;
+} dht_reading;
+
+
+#if 0
 // Simple led task
 void vTaskCode( void * pvParameters )
 {
@@ -14,60 +22,139 @@ void vTaskCode( void * pvParameters )
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     */
     for( ;; ) {
-        gpio_put(PICO_DEFAULT_LED_PIN, 1);
-        int val = getvalue(); 
-        printf("Hola gus %d \n", val);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        gpio_put(PICO_DEFAULT_LED_PIN, 0);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        //gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        
+        //dht_reading reading;
+        //read_from_dht(&reading);
+        //printf("Humedad = %.1f%%, Temperatura = %.1fC \n", reading.humidity, reading.temp_celsius);
+        //printf("Humidity = %.1f%%, Temperature = %.1fC \n", 10.0, 20.0);
+
+        float temperature = ds18b20_get_temp();
+        printf("Temperature = %.2fC\n", temperature);
+        
+        //resistencia_on();
+        
+        //int val = getvalue(); 
+        //printf("Hola gus %d \n", val);
+        
+        vTaskDelay(1000);
     }
 }
 
 int main() {
     stdio_init_all();
-
+    
 #ifdef PICO_DEFAULT_LED_PIN
     gpio_init(PICO_DEFAULT_LED_PIN);
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 #endif
-
+    
     TaskHandle_t xHandle = NULL;
-    /* Create the task, storing the handle. */
     BaseType_t xReturned = xTaskCreate(
         vTaskCode,       /* Function that implements the task. */
         "Blinky task",   /* Text name for the task. */
         512,             /* Stack size in words, not bytes. */
         ( void * ) 1,    /* Parameter passed into the task. */
         tskIDLE_PRIORITY,/* Priority at which the task is created. */
-        &xHandle );   
+        &xHandle );  
 
     vTaskStartScheduler();
     __builtin_unreachable();
 }
 #endif
 
-#if 0
+#if 1
 // Two tasks with same code but different priorities
-void vTaskCode( void * pvParameters ) {
+/*void vTaskCode( void * pvParameters ) {
     int taskId = *((int *)pvParameters);
     for( ;; ) {
         printf("Task %d task\n", taskId);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
+}*/
+
+void vTaskCode_Resistencia_init( void * pvParameters )
+{
+        resistencia_init();
+        vTaskDelete(NULL);
+}
+
+void vTaskCode_on( void * pvParameters )
+{
+    int taskId = *((int *)pvParameters);
+    for( ;; ) {
+        gpio_put(PICO_DEFAULT_LED_PIN, 1);
+        resistencia_on(); 
+        vTaskDelay(1000);
+    }
+}
+
+void vTaskCode_off( void * pvParameters )
+{
+    for( ;; ) {
+        gpio_put(PICO_DEFAULT_LED_PIN, 0);
+        resistencia_off();
+        vTaskDelay(500);
+    }
+}
+
+void vTaskCode_DHT22( void * pvParameters )
+{
+    for( ;; ) {        
+        dht_reading reading;
+        read_from_dht(&reading);
+        printf("Humedad = %.1f%%, Temperatura = %.1fC \n", reading.humidity, reading.temp_celsius);
+        vTaskDelay(1000);
+    }
+}
+
+void vTaskCode_DS18B20( void * pvParameters )
+{
+    for( ;; ) {
+        float temperature = ds18b20_get_temp();
+        printf("Temperatura Termotanque = %.2fC\n", temperature);
+        vTaskDelay(1000);
+    }
+}
+
+void vTaskCode_WTD( void * pvParameters )
+{
+    for( ;; ) {
+        watchdog_update();   
+    }
 }
 
 int main() {
     stdio_init_all();
+
+    watchdog_enable(10000, 1);
+
+    /*if (watchdog_caused_reboot()) {
+        printf("Rebooted by Watchdog!\n");
+        return 0;
+    } else {
+        printf("Clean boot\n");
+    }*/
   
     TaskHandle_t xHandle1 = NULL;
     TaskHandle_t xHandle2 = NULL;
+    TaskHandle_t xHandle3 = NULL;
+    TaskHandle_t xHandle4 = NULL;
+    TaskHandle_t xHandle5 = NULL;
+    TaskHandle_t xHandle6 = NULL;
     /* Create 2 task */
-    int tid1 = 1, tid2 = 2;
-    BaseType_t xReturned1 = xTaskCreate( vTaskCode, "talking task1", 512, ( void * ) &tid1, 1, &xHandle1 );  
-    BaseType_t xReturned2 = xTaskCreate( vTaskCode, "talking task2", 512, ( void * ) &tid2, 1, &xHandle2 );
+    int tid1 = 1, tid2 = 2, tid3 = 3, tid4 = 4, tid5 = 5, tid6 = 6;
+    BaseType_t xReturned1 = xTaskCreate( vTaskCode_Resistencia_init, "Resistencia init", 512, ( void * ) &tid1, +4, &xHandle1 );
+    BaseType_t xReturned2 = xTaskCreate( vTaskCode_on, "Resistencia ON", 512, ( void * ) &tid2, +1, &xHandle2 );  
+    BaseType_t xReturned3 = xTaskCreate( vTaskCode_off, "Resistencia OFF", 512, ( void * ) &tid3, +2, &xHandle3 );
+    BaseType_t xReturned4 = xTaskCreate( vTaskCode_DHT22, "DHT22", 512, ( void * ) &tid4, +1, &xHandle4 );
+    BaseType_t xReturned5 = xTaskCreate( vTaskCode_DS18B20, "DS18B20", 512, ( void * ) &tid5, +3, &xHandle5 );
+    BaseType_t xReturned6 = xTaskCreate( vTaskCode_WTD, "WTD", 512, ( void * ) &tid6, +3, &xHandle6 );
+
     vTaskStartScheduler();
     __builtin_unreachable();
 }
+
 #endif
 
 #if 0
